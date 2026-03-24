@@ -34,6 +34,7 @@ class NodeRecord(BaseModel):
     name: str
     protocol: str
     enabled: bool = True
+    pool_enabled: bool = True
     outbound: dict[str, Any]
     source: str
     hash: str
@@ -43,10 +44,14 @@ class NodeRecord(BaseModel):
     last_checked_at: Optional[str] = None
     last_latency_ms: Optional[int] = None
     last_error: Optional[str] = None
+    healthcheck_state: Literal["idle", "waiting", "running", "passed", "failed"] = "idle"
     failure_count: int = 0
     bound_port: Optional[int] = None
     bound_tag: Optional[str] = None
     selected_at: Optional[str] = None
+    runtime_state: Literal["stopped", "running"] = "stopped"
+    lease_expires_at: Optional[str] = None
+    last_allocated_at: Optional[str] = None
 
 
 class AppState(BaseModel):
@@ -66,3 +71,13 @@ class ProxyLease(BaseModel):
     last_latency_ms: Optional[int]
     last_checked_at: Optional[str]
 
+
+class NodeUpdateRequest(BaseModel):
+    pool_enabled: Optional[bool] = None
+    enabled: Optional[bool] = None
+
+
+class NodeBulkUpdateRequest(BaseModel):
+    node_ids: list[str]
+    pool_enabled: Optional[bool] = None
+    enabled: Optional[bool] = None

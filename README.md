@@ -3,7 +3,9 @@
 `proxy-pool` is a small service for:
 
 - importing common `v2ray/v2raya` subscription formats
-- generating a warm local pool of `SOCKS5` ports with `sing-box`
+- assigning a fixed local port to every parsed node
+- waking a node's local `SOCKS5` listener on demand with `sing-box`
+- stopping idle listeners again after TTL
 - health checking bound proxies
 - returning one healthy proxy URL from `GET /api/proxy/next`
 - exposing a lightweight WebUI
@@ -31,6 +33,13 @@ docker run --rm -p 9080:9080 -v $(pwd)/data:/app/data proxy-pool
 ```
 
 Then open `http://127.0.0.1:9080`.
+
+Runtime model:
+
+- every node gets a fixed local port
+- listeners are not started until the node is allocated
+- `GET /api/proxy/next` starts that node if needed and returns its fixed port
+- after TTL, the listener is stopped again
 
 For `codex-console`, point dynamic proxy API to:
 

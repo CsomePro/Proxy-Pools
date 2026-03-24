@@ -6,111 +6,943 @@
   <title>Proxy Pool</title>
   <style>
     :root {
-      --bg: #f5f1e8;
-      --panel: #fffdf8;
-      --ink: #1f1a17;
-      --muted: #6a6058;
-      --line: #d6ccbc;
-      --accent: #0d7c66;
-      --danger: #b64545;
+      --bg: #e8efe8;
+      --bg-strong: #dbe5da;
+      --panel: rgba(255, 255, 255, 0.84);
+      --panel-strong: rgba(255, 255, 255, 0.94);
+      --ink: #16211a;
+      --muted: #5f6f64;
+      --line: rgba(30, 47, 35, 0.12);
+      --accent: #126c4c;
+      --accent-soft: rgba(18, 108, 76, 0.12);
+      --danger: #b64949;
+      --danger-soft: rgba(182, 73, 73, 0.14);
+      --warn: #c67e1c;
+      --warn-soft: rgba(198, 126, 28, 0.15);
+      --shadow: 0 20px 60px rgba(20, 36, 27, 0.08);
+      --radius-lg: 24px;
+      --radius-md: 16px;
+      --radius-sm: 12px;
     }
-    body { margin: 0; font-family: "IBM Plex Sans", "Segoe UI", sans-serif; background: linear-gradient(180deg, #efe5d4, var(--bg)); color: var(--ink); }
-    .wrap { max-width: 1100px; margin: 0 auto; padding: 24px; }
-    .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
-    .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.05); }
-    h1, h2 { margin: 0 0 12px; }
-    .muted { color: var(--muted); }
-    table { width: 100%; border-collapse: collapse; font-size: 14px; }
-    th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); }
-    input, select, button { font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); }
-    button { background: var(--accent); color: white; cursor: pointer; }
-    button.secondary { background: white; color: var(--ink); }
-    form { display: grid; gap: 10px; }
-    .row { display: flex; gap: 10px; flex-wrap: wrap; }
-    .pill { display: inline-block; padding: 4px 8px; border-radius: 999px; background: #e7f5f1; color: var(--accent); }
-    .bad { color: var(--danger); }
-    code { background: #f1ece4; padding: 2px 6px; border-radius: 6px; }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(18, 108, 76, 0.12), transparent 34%),
+        radial-gradient(circle at top right, rgba(198, 126, 28, 0.10), transparent 28%),
+        linear-gradient(180deg, #eff5ef 0%, var(--bg) 48%, #e3ebe3 100%);
+      min-height: 100vh;
+    }
+
+    .page {
+      max-width: 1480px;
+      margin: 0 auto;
+      padding: 28px 22px 40px;
+    }
+
+    .hero {
+      display: grid;
+      gap: 18px;
+      grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.9fr);
+      margin-bottom: 20px;
+    }
+
+    .hero-main,
+    .hero-side,
+    .panel {
+      background: var(--panel);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid rgba(255, 255, 255, 0.52);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-main {
+      padding: 28px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-main::after {
+      content: "";
+      position: absolute;
+      inset: auto -60px -80px auto;
+      width: 220px;
+      height: 220px;
+      border-radius: 999px;
+      background: radial-gradient(circle, rgba(18, 108, 76, 0.16), transparent 72%);
+      pointer-events: none;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid rgba(18, 108, 76, 0.12);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+    }
+
+    h1 {
+      margin-top: 16px;
+      font-size: clamp(34px, 6vw, 56px);
+      line-height: 0.94;
+      letter-spacing: -0.04em;
+      max-width: 10ch;
+    }
+
+    .hero-copy {
+      max-width: 72ch;
+      margin: 16px 0 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.7;
+    }
+
+    .hero-side {
+      padding: 22px;
+      display: grid;
+      gap: 16px;
+      align-content: start;
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+      margin-top: 22px;
+    }
+
+    .metric {
+      background: rgba(255, 255, 255, 0.7);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      padding: 16px;
+    }
+
+    .metric-label {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .metric-value {
+      margin-top: 8px;
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.04em;
+    }
+
+    .meta-list {
+      display: grid;
+      gap: 10px;
+      margin: 0;
+    }
+
+    .meta-item {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--line);
+      font-size: 14px;
+    }
+
+    .meta-item:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .meta-item strong {
+      font-size: 15px;
+    }
+
+    .grid {
+      display: grid;
+      gap: 18px;
+      grid-template-columns: 1.1fr 0.9fr;
+      margin-bottom: 18px;
+    }
+
+    .panel {
+      padding: 22px;
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .panel-copy {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 12px;
+    }
+
+    .field-grid {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: 1.1fr 2fr 160px;
+    }
+
+    form {
+      display: grid;
+      gap: 12px;
+    }
+
+    input,
+    select,
+    button {
+      font: inherit;
+    }
+
+    input,
+    select {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid var(--line);
+      color: var(--ink);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      min-height: 48px;
+      transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+    }
+
+    input:focus,
+    select:focus {
+      outline: none;
+      border-color: rgba(18, 108, 76, 0.45);
+      box-shadow: 0 0 0 4px rgba(18, 108, 76, 0.10);
+    }
+
+    button {
+      min-height: 46px;
+      border: 0;
+      border-radius: 999px;
+      padding: 0 16px;
+      cursor: pointer;
+      transition: transform 140ms ease, box-shadow 140ms ease, opacity 140ms ease, background 140ms ease;
+    }
+
+    button:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 20px rgba(19, 34, 25, 0.10);
+    }
+
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #116946, #1a7d57);
+      color: white;
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.9);
+      color: var(--ink);
+      border: 1px solid var(--line);
+    }
+
+    .btn-danger {
+      background: var(--danger-soft);
+      color: var(--danger);
+      border: 1px solid rgba(182, 73, 73, 0.18);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 1px dashed rgba(95, 111, 100, 0.28);
+    }
+
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .flash {
+      min-height: 46px;
+      padding: 12px 14px;
+      border-radius: var(--radius-md);
+      background: rgba(255, 255, 255, 0.78);
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+    }
+
+    .flash[data-tone="success"] {
+      background: rgba(18, 108, 76, 0.10);
+      color: var(--accent);
+      border-color: rgba(18, 108, 76, 0.20);
+    }
+
+    .flash[data-tone="error"] {
+      background: var(--danger-soft);
+      color: var(--danger);
+      border-color: rgba(182, 73, 73, 0.22);
+    }
+
+    .flash[data-tone="working"] {
+      background: rgba(198, 126, 28, 0.10);
+      color: var(--warn);
+      border-color: rgba(198, 126, 28, 0.22);
+    }
+
+    .progress {
+      display: grid;
+      gap: 10px;
+    }
+
+    .progress-bar {
+      height: 12px;
+      border-radius: 999px;
+      background: rgba(95, 111, 100, 0.12);
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #116946, #58b27e);
+      transition: width 220ms ease;
+    }
+
+    .progress-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .subscriptions-table,
+    .nodes-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 13px;
+    }
+
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.72);
+    }
+
+    .subscriptions-table th,
+    .subscriptions-table td,
+    .nodes-table th,
+    .nodes-table td {
+      padding: 12px 12px;
+      border-bottom: 1px solid rgba(30, 47, 35, 0.08);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .subscriptions-table th,
+    .nodes-table th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: rgba(241, 247, 242, 0.95);
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .nodes-table tbody tr {
+      transition: background 160ms ease, transform 160ms ease;
+    }
+
+    .nodes-table tbody tr:hover {
+      background: rgba(18, 108, 76, 0.05);
+    }
+
+    .nodes-table tbody tr.is-selected {
+      background: rgba(18, 108, 76, 0.08);
+    }
+
+    .node-name {
+      font-weight: 600;
+      font-size: 14px;
+      line-height: 1.3;
+      max-width: 260px;
+      word-break: break-word;
+    }
+
+    .node-meta {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 4px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 28px;
+      padding: 0 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+
+    .badge-neutral {
+      background: rgba(95, 111, 100, 0.10);
+      color: #314237;
+      border-color: rgba(95, 111, 100, 0.12);
+    }
+
+    .badge-good {
+      background: rgba(18, 108, 76, 0.12);
+      color: var(--accent);
+      border-color: rgba(18, 108, 76, 0.16);
+    }
+
+    .badge-bad {
+      background: var(--danger-soft);
+      color: var(--danger);
+      border-color: rgba(182, 73, 73, 0.18);
+    }
+
+    .badge-warn {
+      background: var(--warn-soft);
+      color: var(--warn);
+      border-color: rgba(198, 126, 28, 0.18);
+    }
+
+    .toolbar {
+      display: grid;
+      gap: 12px;
+      margin-bottom: 16px;
+      padding: 16px;
+      border-radius: 18px;
+      background: var(--panel-strong);
+      border: 1px solid rgba(255, 255, 255, 0.58);
+      box-shadow: var(--shadow);
+      position: sticky;
+      top: 14px;
+      z-index: 4;
+    }
+
+    .toolbar-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .toolbar-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .toolbar-stats {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 40px;
+      padding: 0 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.88);
+      border: 1px solid var(--line);
+      color: var(--ink);
+      font-size: 13px;
+    }
+
+    .toggle input {
+      width: 16px;
+      height: 16px;
+      min-height: auto;
+      margin: 0;
+      padding: 0;
+      border-radius: 4px;
+    }
+
+    .inline-input {
+      min-width: 240px;
+      max-width: 340px;
+    }
+
+    .running-grid {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    }
+
+    .running-card {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.78);
+    }
+
+    .running-card h3 {
+      font-size: 16px;
+      line-height: 1.3;
+    }
+
+    .running-card .row {
+      margin-top: 12px;
+    }
+
+    .empty {
+      padding: 18px;
+      border-radius: 16px;
+      border: 1px dashed rgba(95, 111, 100, 0.28);
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.56);
+      text-align: center;
+    }
+
+    .mono {
+      font-family: "IBM Plex Mono", "SFMono-Regular", monospace;
+      font-size: 12px;
+    }
+
+    .error-copy {
+      max-width: 340px;
+      color: var(--danger);
+      line-height: 1.5;
+      word-break: break-word;
+    }
+
+    .error-pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 0 10px;
+      border-radius: 999px;
+      background: var(--danger-soft);
+      color: var(--danger);
+      border: 1px solid rgba(182, 73, 73, 0.18);
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+      cursor: copy;
+    }
+
+    .hover-tooltip {
+      position: fixed;
+      top: 0;
+      left: 0;
+      max-width: min(460px, calc(100vw - 24px));
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: rgba(22, 27, 24, 0.96);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.25);
+      font-size: 12px;
+      line-height: 1.55;
+      word-break: break-word;
+      white-space: pre-wrap;
+      pointer-events: none;
+      opacity: 0;
+      visibility: hidden;
+      z-index: 9999;
+      transition: opacity 120ms ease;
+    }
+
+    .hover-tooltip.is-visible {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .cell-actions .row {
+      gap: 8px;
+    }
+
+    .checkbox-cell {
+      width: 48px;
+      text-align: center;
+    }
+
+    .checkbox-cell input {
+      width: 16px;
+      height: 16px;
+      min-height: auto;
+      padding: 0;
+      margin: 0;
+    }
+
+    @media (max-width: 1180px) {
+      .hero,
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .toolbar {
+        position: static;
+      }
+    }
+
+    @media (max-width: 860px) {
+      .page {
+        padding: 18px 14px 28px;
+      }
+
+      .hero-main,
+      .hero-side,
+      .panel {
+        padding: 18px;
+      }
+
+      .field-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .toolbar-row,
+      .toolbar-group {
+        align-items: stretch;
+      }
+
+      .toolbar-group {
+        width: 100%;
+      }
+
+      .inline-input {
+        max-width: none;
+        width: 100%;
+      }
+    }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>Proxy Pool</h1>
-    <p class="muted">Import subscriptions, keep a warm SOCKS5 pool, and return a healthy proxy to codex-console.</p>
+  <div class="page">
+    <section class="hero">
+      <div class="hero-main">
+        <div class="eyebrow">Proxy Pool Console</div>
+        <h1>Control the pool, not the clutter.</h1>
+        <p class="hero-copy">
+          Import subscriptions, inspect every node, batch-select what belongs in the active pool, and watch health checks move in real time without a chaotic wall of one-off buttons.
+        </p>
 
-    <div class="grid">
-      <section class="panel">
-        <h2>Status</h2>
-        <p><span class="pill">Subscriptions {{ status.subscriptions }}</span> <span class="pill">Nodes {{ status.nodes }}</span> <span class="pill">Bound {{ status.bound_nodes }}</span></p>
-        <p>Healthy bound nodes: <strong>{{ status.healthy_bound_nodes }}</strong></p>
-        <p>Base port: <code>{{ status.base_port }}</code></p>
-        <p>Pool size: <code>{{ status.pool_size }}</code></p>
-        <p>Engine running: <strong>{{ "yes" if status.engine.running else "no" }}</strong></p>
-        <p>Next proxy API: <code>/api/proxy/next</code></p>
-      </section>
+        <div class="metric-grid">
+          <article class="metric">
+            <div class="metric-label">Subscriptions</div>
+            <div class="metric-value" id="metric-subscriptions">{{ status.subscriptions }}</div>
+          </article>
+          <article class="metric">
+            <div class="metric-label">Nodes</div>
+            <div class="metric-value" id="metric-nodes">{{ status.nodes }}</div>
+          </article>
+          <article class="metric">
+            <div class="metric-label">Pool Enabled</div>
+            <div class="metric-value" id="metric-pool-enabled">{{ status.pool_enabled_nodes }}</div>
+          </article>
+          <article class="metric">
+            <div class="metric-label">Assigned Ports</div>
+            <div class="metric-value" id="metric-assigned">{{ status.assigned_nodes }}</div>
+          </article>
+          <article class="metric">
+            <div class="metric-label">Running</div>
+            <div class="metric-value" id="metric-running">{{ status.running_nodes }}</div>
+          </article>
+          <article class="metric">
+            <div class="metric-label">Healthy Running</div>
+            <div class="metric-value" id="metric-healthy-running">{{ status.healthy_running_nodes }}</div>
+          </article>
+        </div>
+      </div>
 
-      <section class="panel">
-        <h2>Add Subscription</h2>
-        <form id="subscription-form">
-          <input type="text" name="name" placeholder="subscription name" required>
-          <input type="url" name="url" placeholder="https://example.com/subscription" required>
-          <select name="format">
-            <option value="auto">auto</option>
-            <option value="base64">base64</option>
-            <option value="uri">uri</option>
-            <option value="clash">clash</option>
-          </select>
-          <div class="row">
-            <button type="submit">Import</button>
-            <button type="button" class="secondary" id="check-btn">Check Bound Nodes</button>
-            <button type="button" class="secondary" id="rebuild-btn">Rebuild Pool</button>
+      <aside class="hero-side">
+        <div>
+          <h2>Health Check</h2>
+          <p class="panel-copy">Real-time progress across the current pool, with per-node state updates preserved while the check is running.</p>
+        </div>
+
+        <div class="progress">
+          <div class="progress-bar">
+            {% set progress_total = status.healthcheck_total or 0 %}
+            {% set progress_done = (status.healthcheck_passed or 0) + (status.healthcheck_failed or 0) %}
+            {% set progress_pct = ((progress_done / progress_total) * 100) if progress_total else 0 %}
+            <div class="progress-fill" id="healthcheck-progress" style="width: {{ '%.2f'|format(progress_pct) }}%;"></div>
           </div>
-        </form>
-        <p id="flash" class="muted"></p>
-      </section>
-    </div>
+          <div class="progress-meta" id="healthcheck-summary">
+            <span>Total {{ status.healthcheck_total }}</span>
+            <span>Waiting {{ status.healthcheck_waiting }}</span>
+            <span>Running {{ status.healthcheck_in_progress }}</span>
+            <span>Passed {{ status.healthcheck_passed }}</span>
+            <span>Failed {{ status.healthcheck_failed }}</span>
+          </div>
+        </div>
 
-    <section class="panel" style="margin-top:16px;">
-      <h2>Subscriptions</h2>
-      <table>
-        <thead>
-          <tr><th>Name</th><th>Format</th><th>Last Refresh</th><th>Last Error</th><th>Action</th></tr>
-        </thead>
-        <tbody>
-          {% for item in subscriptions %}
-          <tr>
-            <td>{{ item.name }}</td>
-            <td>{{ item.format }}</td>
-            <td>{{ item.last_refreshed_at or "-" }}</td>
-            <td class="{{ 'bad' if item.last_error else '' }}">{{ item.last_error or "-" }}</td>
-            <td>
-              <button type="button" class="secondary action-refresh" data-id="{{ item.id }}">Refresh</button>
-              <button type="button" class="secondary action-delete" data-id="{{ item.id }}">Delete</button>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+        <div class="meta-list">
+          <div class="meta-item"><span>Status</span><strong id="healthcheck-status">{{ "running" if status.healthcheck_running else "idle" }}</strong></div>
+          <div class="meta-item"><span>Lease TTL</span><strong id="lease-ttl">{{ status.lease_ttl_secs }}s</strong></div>
+          <div class="meta-item"><span>Base Port</span><strong id="base-port">{{ status.base_port }}</strong></div>
+          <div class="meta-item"><span>Local Runners</span><strong id="engine-running">{{ status.engine.running_nodes }}</strong></div>
+          <div class="meta-item"><span>Next Proxy API</span><strong class="mono">/api/proxy/next</strong></div>
+        </div>
+      </aside>
     </section>
 
-    <section class="panel" style="margin-top:16px;">
-      <h2>Bound Nodes</h2>
-      <table>
-        <thead>
-          <tr><th>Name</th><th>Protocol</th><th>Port</th><th>Healthy</th><th>Latency</th><th>Checked At</th></tr>
-        </thead>
-        <tbody>
-          {% for node in nodes if node.bound_port %}
-          <tr>
-            <td>{{ node.name }}</td>
-            <td>{{ node.protocol }}</td>
-            <td><code>{{ node.bound_port }}</code></td>
-            <td>{{ node.healthy if node.healthy is not none else "-" }}</td>
-            <td>{{ node.last_latency_ms or "-" }}</td>
-            <td>{{ node.last_checked_at or "-" }}</td>
-          </tr>
+    <section class="grid">
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Add Subscription</h2>
+            <div class="panel-copy">Import one subscription and let the pool assign fixed local ports to every parsed node.</div>
+          </div>
+        </div>
+
+        <form id="subscription-form">
+          <div class="field-grid">
+            <input type="text" name="name" placeholder="subscription name" required>
+            <input type="url" name="url" placeholder="https://example.com/subscription" required>
+            <select name="format">
+              <option value="auto">auto</option>
+              <option value="base64">base64</option>
+              <option value="uri">uri</option>
+              <option value="clash">clash</option>
+            </select>
+          </div>
+          <div class="row">
+            <button type="submit" class="btn-primary">Import Subscription</button>
+            <button type="button" class="btn-secondary" id="check-btn">Check Pool Nodes</button>
+            <button type="button" class="btn-secondary" id="rebuild-btn">Sync Ports</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Live Feedback</h2>
+            <div class="panel-copy">Batch actions, refreshes, and health checks report here without forcing a full page jump.</div>
+          </div>
+        </div>
+        <div class="stack">
+          <div id="flash" class="flash" data-tone="idle">Ready.</div>
+          <div class="row">
+            <span class="badge badge-neutral" id="badge-running">{{ "Health check running" if status.healthcheck_running else "Health check idle" }}</span>
+            <span class="badge badge-neutral" id="badge-visible">Visible nodes {{ nodes|length }}</span>
+            <span class="badge badge-neutral" id="badge-selected">Selected 0</span>
+          </div>
+        </div>
+      </section>
+    </section>
+
+    <section class="panel" style="margin-bottom: 18px;">
+      <div class="panel-head">
+        <div>
+          <h2>Subscriptions</h2>
+          <div class="panel-copy">Refresh or remove imported sources without leaving the pool dashboard.</div>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="subscriptions-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Format</th>
+              <th>Last Refresh</th>
+              <th>Last Error</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in subscriptions %}
+            <tr>
+              <td>{{ item.name }}</td>
+              <td><span class="badge badge-neutral">{{ item.format }}</span></td>
+              <td>{{ item.last_refreshed_at or "-" }}</td>
+              <td class="{{ 'error-copy' if item.last_error else '' }}">{{ item.last_error or "-" }}</td>
+              <td>
+                <div class="row">
+                  <button type="button" class="btn-secondary action-refresh" data-id="{{ item.id }}">Refresh</button>
+                  <button type="button" class="btn-danger action-delete" data-id="{{ item.id }}">Delete</button>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel" style="margin-bottom: 18px;">
+      <div class="panel-head">
+        <div>
+          <h2>Running Nodes</h2>
+          <div class="panel-copy">Currently active listeners and their temporary leases.</div>
+        </div>
+      </div>
+      <div class="running-grid" id="running-grid">
+        {% set running_nodes = nodes | selectattr('runtime_state', 'equalto', 'running') | list %}
+        {% if running_nodes %}
+          {% for node in running_nodes %}
+          <article class="running-card">
+            <h3>{{ node.name }}</h3>
+            <div class="row">
+              <span class="badge badge-neutral">{{ node.protocol }}</span>
+              <span class="badge badge-good">Port {{ node.bound_port }}</span>
+              <span class="badge {{ 'badge-good' if node.healthy else 'badge-neutral' }}">{{ node.healthy if node.healthy is not none else 'unknown' }}</span>
+            </div>
+            <div class="node-meta">Lease expires: {{ node.lease_expires_at or "-" }}</div>
+            <div class="node-meta">Latency: {{ node.last_latency_ms or "-" }} ms</div>
+          </article>
           {% endfor %}
-        </tbody>
-      </table>
+        {% else %}
+          <div class="empty">No node is running right now.</div>
+        {% endif %}
+      </div>
+    </section>
+
+    <section>
+      <div class="toolbar">
+        <div class="toolbar-row">
+          <div class="toolbar-group">
+            <input id="search-input" class="inline-input" type="search" placeholder="Search name or protocol">
+            <label class="toggle"><input type="checkbox" id="filter-pool"> In pool only</label>
+            <label class="toggle"><input type="checkbox" id="filter-failed"> Failed only</label>
+            <label class="toggle"><input type="checkbox" id="filter-running"> Running only</label>
+          </div>
+          <div class="toolbar-stats" id="toolbar-stats">0 selected / {{ nodes|length }} visible</div>
+        </div>
+
+        <div class="toolbar-row">
+          <div class="toolbar-group">
+            <button type="button" class="btn-secondary" id="select-visible-btn">Select Visible</button>
+            <button type="button" class="btn-secondary" id="clear-selection-btn">Clear Selection</button>
+            <button type="button" class="btn-primary" id="bulk-add-btn" disabled>Add Selected To Pool</button>
+            <button type="button" class="btn-danger" id="bulk-remove-btn" disabled>Remove Selected From Pool</button>
+          </div>
+          <div class="toolbar-group">
+            <span class="badge badge-neutral" id="bulk-hint">Use the checkbox column for batch pool control.</span>
+          </div>
+        </div>
+      </div>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>All Nodes</h2>
+            <div class="panel-copy">Select multiple nodes with checkboxes, then batch-apply pool membership without hunting for one button per row.</div>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table class="nodes-table" id="nodes-table">
+            <thead>
+              <tr>
+                <th class="checkbox-cell"><input type="checkbox" id="select-all-visible"></th>
+                <th>Node</th>
+                <th>Protocol</th>
+                <th>Pool</th>
+                <th>Runtime</th>
+                <th>Check</th>
+                <th>Port</th>
+                <th>Healthy</th>
+                <th>Latency</th>
+                <th>Checked</th>
+                <th>Lease</th>
+                <th>Error</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="nodes-body">
+              {% for node in nodes %}
+              <tr
+                data-node-id="{{ node.id }}"
+                data-name="{{ node.name|lower }}"
+                data-protocol="{{ node.protocol|lower }}"
+                data-pool-enabled="{{ '1' if node.pool_enabled else '0' }}"
+                data-runtime-state="{{ node.runtime_state }}"
+                data-health="{{ node.healthy if node.healthy is not none else 'unknown' }}"
+                data-check-state="{{ node.healthcheck_state }}"
+              >
+                <td class="checkbox-cell">
+                  <input type="checkbox" class="node-checkbox" data-id="{{ node.id }}">
+                </td>
+                <td class="cell-node">
+                  <div class="node-name">{{ node.name }}</div>
+                  <div class="node-meta mono">{{ node.id[:8] }}</div>
+                </td>
+                <td class="cell-protocol"><span class="badge badge-neutral">{{ node.protocol }}</span></td>
+                <td class="cell-pool">
+                  <span class="badge {{ 'badge-good' if node.pool_enabled else 'badge-neutral' }}">{{ 'in pool' if node.pool_enabled else 'out' }}</span>
+                </td>
+                <td class="cell-runtime">
+                  <span class="badge {{ 'badge-good' if node.runtime_state == 'running' else 'badge-neutral' }}">{{ node.runtime_state }}</span>
+                </td>
+                <td class="cell-check">
+                  <span class="badge {{ 'badge-warn' if node.healthcheck_state in ['waiting', 'running'] else ('badge-good' if node.healthcheck_state == 'passed' else ('badge-bad' if node.healthcheck_state == 'failed' else 'badge-neutral')) }}">{{ node.healthcheck_state }}</span>
+                </td>
+                <td class="cell-port mono">{{ node.bound_port or "-" }}</td>
+                <td class="cell-healthy">
+                  <span class="badge {{ 'badge-good' if node.healthy else ('badge-bad' if node.healthy is not none else 'badge-neutral') }}">{{ node.healthy if node.healthy is not none else 'unknown' }}</span>
+                </td>
+                <td class="cell-latency mono">{{ node.last_latency_ms or "-" }}</td>
+                <td class="cell-checked mono">{{ node.last_checked_at or "-" }}</td>
+                <td class="cell-lease mono">{{ node.lease_expires_at or "-" }}</td>
+                <td class="cell-error">
+                  {% if node.last_error %}
+                  <span class="error-pill" data-tooltip="{{ node.last_error }}">Error</span>
+                  {% else %}
+                  <span class="node-meta">-</span>
+                  {% endif %}
+                </td>
+                <td class="cell-actions">
+                  <div class="row">
+                    <button type="button" class="btn-secondary action-pool-toggle" data-id="{{ node.id }}" data-enabled="{{ 'true' if node.pool_enabled else 'false' }}">
+                      {{ "Remove" if node.pool_enabled else "Add" }}
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </section>
   </div>
 
@@ -119,6 +951,149 @@
     const form = document.getElementById('subscription-form');
     const checkBtn = document.getElementById('check-btn');
     const rebuildBtn = document.getElementById('rebuild-btn');
+    const searchInput = document.getElementById('search-input');
+    const filterPool = document.getElementById('filter-pool');
+    const filterFailed = document.getElementById('filter-failed');
+    const filterRunning = document.getElementById('filter-running');
+    const selectVisibleBtn = document.getElementById('select-visible-btn');
+    const clearSelectionBtn = document.getElementById('clear-selection-btn');
+    const bulkAddBtn = document.getElementById('bulk-add-btn');
+    const bulkRemoveBtn = document.getElementById('bulk-remove-btn');
+    const selectAllVisible = document.getElementById('select-all-visible');
+    const toolbarStats = document.getElementById('toolbar-stats');
+    const badgeSelected = document.getElementById('badge-selected');
+    const badgeVisible = document.getElementById('badge-visible');
+    const badgeRunning = document.getElementById('badge-running');
+    const runningGrid = document.getElementById('running-grid');
+    const nodesBody = document.getElementById('nodes-body');
+    const selectedNodeIds = new Set();
+    const tooltip = document.createElement('div');
+    let pollTimer = null;
+
+    tooltip.className = 'hover-tooltip';
+    document.body.appendChild(tooltip);
+
+    function setFlash(message, tone = 'idle') {
+      flash.textContent = message;
+      flash.dataset.tone = tone;
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+    }
+
+    function badge(label, tone = 'neutral') {
+      return `<span class="badge badge-${tone}">${escapeHtml(label)}</span>`;
+    }
+
+    function toneForHealth(value) {
+      if (value === true) return 'good';
+      if (value === false) return 'bad';
+      return 'neutral';
+    }
+
+    function toneForRuntime(value) {
+      return value === 'running' ? 'good' : 'neutral';
+    }
+
+    function toneForCheck(value) {
+      if (value === 'passed') return 'good';
+      if (value === 'failed') return 'bad';
+      if (value === 'waiting' || value === 'running') return 'warn';
+      return 'neutral';
+    }
+
+    function rowMatchesFilters(row) {
+      const query = searchInput.value.trim().toLowerCase();
+      const haystack = `${row.dataset.name} ${row.dataset.protocol}`;
+      if (query && !haystack.includes(query)) return false;
+      if (filterPool.checked && row.dataset.poolEnabled !== '1') return false;
+      if (filterFailed.checked && row.dataset.health !== 'false' && row.dataset.checkState !== 'failed') return false;
+      if (filterRunning.checked && row.dataset.runtimeState !== 'running') return false;
+      return true;
+    }
+
+    function visibleRows() {
+      return [...nodesBody.querySelectorAll('tr')].filter((row) => row.style.display !== 'none');
+    }
+
+    function updateSelectionUI() {
+      const visible = visibleRows();
+      const selectedVisible = visible.filter((row) => selectedNodeIds.has(row.dataset.nodeId)).length;
+      toolbarStats.textContent = `${selectedNodeIds.size} selected / ${visible.length} visible`;
+      badgeSelected.textContent = `Selected ${selectedNodeIds.size}`;
+      badgeVisible.textContent = `Visible nodes ${visible.length}`;
+      bulkAddBtn.disabled = selectedNodeIds.size === 0;
+      bulkRemoveBtn.disabled = selectedNodeIds.size === 0;
+      selectAllVisible.checked = visible.length > 0 && selectedVisible === visible.length;
+      nodesBody.querySelectorAll('tr').forEach((row) => {
+        row.classList.toggle('is-selected', selectedNodeIds.has(row.dataset.nodeId));
+      });
+    }
+
+    function applyFilters() {
+      [...nodesBody.querySelectorAll('tr')].forEach((row) => {
+        row.style.display = rowMatchesFilters(row) ? '' : 'none';
+      });
+      updateSelectionUI();
+    }
+
+    function attachRowCheckboxes() {
+      nodesBody.querySelectorAll('.node-checkbox').forEach((checkbox) => {
+        checkbox.addEventListener('change', () => {
+          if (checkbox.checked) selectedNodeIds.add(checkbox.dataset.id);
+          else selectedNodeIds.delete(checkbox.dataset.id);
+          updateSelectionUI();
+        });
+      });
+    }
+
+    function attachRowActions() {
+      document.querySelectorAll('.action-refresh').forEach((button) => {
+        button.addEventListener('click', async () => {
+          setFlash('Refreshing subscription...', 'working');
+          try {
+            await call(`/api/subscriptions/${button.dataset.id}/refresh`, { method: 'POST' });
+            location.reload();
+          } catch (error) {
+            setFlash(error.message, 'error');
+          }
+        });
+      });
+
+      document.querySelectorAll('.action-delete').forEach((button) => {
+        button.addEventListener('click', async () => {
+          setFlash('Deleting subscription...', 'working');
+          try {
+            await call(`/api/subscriptions/${button.dataset.id}`, { method: 'DELETE' });
+            location.reload();
+          } catch (error) {
+            setFlash(error.message, 'error');
+          }
+        });
+      });
+
+      document.querySelectorAll('.action-pool-toggle').forEach((button) => {
+        button.addEventListener('click', async () => {
+          const enable = button.dataset.enabled !== 'true';
+          setFlash(enable ? 'Adding node to pool...' : 'Removing node from pool...', 'working');
+          try {
+            await call(`/api/nodes/${button.dataset.id}`, {
+              method: 'PATCH',
+              body: JSON.stringify({ pool_enabled: enable })
+            });
+            location.reload();
+          } catch (error) {
+            setFlash(error.message, 'error');
+          }
+        });
+      });
+    }
 
     async function call(url, options = {}) {
       const res = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...options });
@@ -127,61 +1102,291 @@
       return data;
     }
 
+    function renderRunningNodes(nodes) {
+      const running = nodes.filter((node) => node.runtime_state === 'running');
+      if (running.length === 0) {
+        runningGrid.innerHTML = '<div class="empty">No node is running right now.</div>';
+        return;
+      }
+      runningGrid.innerHTML = running.map((node) => `
+        <article class="running-card">
+          <h3>${escapeHtml(node.name)}</h3>
+          <div class="row">
+            ${badge(node.protocol, 'neutral')}
+            ${badge(`Port ${node.bound_port ?? '-'}`, 'good')}
+            ${badge(String(node.healthy ?? 'unknown'), toneForHealth(node.healthy))}
+          </div>
+          <div class="node-meta">Lease expires: ${escapeHtml(node.lease_expires_at || '-')}</div>
+          <div class="node-meta">Latency: ${escapeHtml(node.last_latency_ms ?? '-')} ms</div>
+        </article>
+      `).join('');
+    }
+
+    function updateRow(row, node) {
+      row.dataset.name = node.name.toLowerCase();
+      row.dataset.protocol = node.protocol.toLowerCase();
+      row.dataset.poolEnabled = node.pool_enabled ? '1' : '0';
+      row.dataset.runtimeState = node.runtime_state;
+      row.dataset.health = node.healthy === null ? 'unknown' : String(node.healthy);
+      row.dataset.checkState = node.healthcheck_state;
+
+      const checkbox = row.querySelector('.node-checkbox');
+      checkbox.checked = selectedNodeIds.has(node.id);
+
+      row.querySelector('.cell-node').innerHTML = `
+        <div class="node-name">${escapeHtml(node.name)}</div>
+        <div class="node-meta mono">${escapeHtml(node.id.slice(0, 8))}</div>
+      `;
+      row.querySelector('.cell-protocol').innerHTML = badge(node.protocol, 'neutral');
+      row.querySelector('.cell-pool').innerHTML = badge(node.pool_enabled ? 'in pool' : 'out', node.pool_enabled ? 'good' : 'neutral');
+      row.querySelector('.cell-runtime').innerHTML = badge(node.runtime_state, toneForRuntime(node.runtime_state));
+      row.querySelector('.cell-check').innerHTML = badge(node.healthcheck_state, toneForCheck(node.healthcheck_state));
+      row.querySelector('.cell-port').textContent = node.bound_port ?? '-';
+      row.querySelector('.cell-healthy').innerHTML = badge(String(node.healthy ?? 'unknown'), toneForHealth(node.healthy));
+      row.querySelector('.cell-latency').textContent = node.last_latency_ms ?? '-';
+      row.querySelector('.cell-checked').textContent = node.last_checked_at || '-';
+      row.querySelector('.cell-lease').textContent = node.lease_expires_at || '-';
+      const errorCell = row.querySelector('.cell-error');
+      errorCell.innerHTML = node.last_error
+        ? `<span class="error-pill" data-tooltip="${escapeHtml(node.last_error)}">Error</span>`
+        : '<span class="node-meta">-</span>';
+      const action = row.querySelector('.action-pool-toggle');
+      action.textContent = node.pool_enabled ? 'Remove' : 'Add';
+      action.dataset.enabled = node.pool_enabled ? 'true' : 'false';
+    }
+
+    function showTooltip(target, event) {
+      const text = target.dataset.tooltip;
+      if (!text) return;
+      tooltip.textContent = `${text}\n\nClick to copy`;
+      tooltip.classList.add('is-visible');
+      moveTooltip(event);
+    }
+
+    function moveTooltip(event) {
+      const offsetX = 16;
+      const offsetY = 18;
+      const maxLeft = Math.max(8, window.innerWidth - tooltip.offsetWidth - 8);
+      const maxTop = Math.max(8, window.innerHeight - tooltip.offsetHeight - 8);
+      const left = Math.min(event.clientX + offsetX, maxLeft);
+      const top = Math.min(event.clientY + offsetY, maxTop);
+      tooltip.style.left = `${left}px`;
+      tooltip.style.top = `${top}px`;
+    }
+
+    function hideTooltip() {
+      tooltip.classList.remove('is-visible');
+    }
+
+    async function copyText(value) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(value);
+        return;
+      }
+      const input = document.createElement('textarea');
+      input.value = value;
+      input.setAttribute('readonly', '');
+      input.style.position = 'fixed';
+      input.style.opacity = '0';
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand('copy');
+      document.body.removeChild(input);
+    }
+
+    async function refreshNodes() {
+      const nodes = await call('/api/nodes');
+      const rowById = new Map([...nodesBody.querySelectorAll('tr')].map((row) => [row.dataset.nodeId, row]));
+      nodes.forEach((node) => {
+        const row = rowById.get(node.id);
+        if (row) updateRow(row, node);
+      });
+      renderRunningNodes(nodes);
+      applyFilters();
+    }
+
+    async function refreshStatus() {
+      const status = await call('/api/status');
+      document.getElementById('metric-subscriptions').textContent = status.subscriptions;
+      document.getElementById('metric-nodes').textContent = status.nodes;
+      document.getElementById('metric-pool-enabled').textContent = status.pool_enabled_nodes;
+      document.getElementById('metric-assigned').textContent = status.assigned_nodes;
+      document.getElementById('metric-running').textContent = status.running_nodes;
+      document.getElementById('metric-healthy-running').textContent = status.healthy_running_nodes;
+      document.getElementById('base-port').textContent = status.base_port;
+      document.getElementById('lease-ttl').textContent = `${status.lease_ttl_secs}s`;
+      document.getElementById('engine-running').textContent = status.engine.running_nodes;
+      document.getElementById('healthcheck-status').textContent = status.healthcheck_running ? 'running' : 'idle';
+      document.getElementById('healthcheck-summary').innerHTML = `
+        <span>Total ${status.healthcheck_total}</span>
+        <span>Waiting ${status.healthcheck_waiting}</span>
+        <span>Running ${status.healthcheck_in_progress}</span>
+        <span>Passed ${status.healthcheck_passed}</span>
+        <span>Failed ${status.healthcheck_failed}</span>
+      `;
+      const done = (status.healthcheck_passed || 0) + (status.healthcheck_failed || 0);
+      const pct = status.healthcheck_total ? (done / status.healthcheck_total) * 100 : 0;
+      document.getElementById('healthcheck-progress').style.width = `${pct.toFixed(2)}%`;
+      badgeRunning.textContent = status.healthcheck_running ? 'Health check running' : 'Health check idle';
+      sessionStorage.setItem('healthcheck_active', status.healthcheck_running ? '1' : '0');
+      if (status.healthcheck_running) {
+        setFlash(`Checking ${done}/${status.healthcheck_total} nodes. Waiting ${status.healthcheck_waiting}, running ${status.healthcheck_in_progress}, passed ${status.healthcheck_passed}, failed ${status.healthcheck_failed}.`, 'working');
+      } else if (sessionStorage.getItem('healthcheck_finished_once') === '1') {
+        setFlash(`Health check finished: ${status.healthcheck_passed}/${status.healthcheck_total} passed, ${status.healthcheck_failed} failed.`, 'success');
+        sessionStorage.removeItem('healthcheck_finished_once');
+      }
+      return status;
+    }
+
+    async function refreshDashboard() {
+      const status = await refreshStatus();
+      await refreshNodes();
+      if (!status.healthcheck_running && pollTimer) {
+        clearInterval(pollTimer);
+        pollTimer = null;
+      }
+    }
+
+    function startHealthcheckPolling() {
+      if (pollTimer) clearInterval(pollTimer);
+      pollTimer = setInterval(async () => {
+        try {
+          const status = await refreshStatus();
+          await refreshNodes();
+          if (!status.healthcheck_running) {
+            sessionStorage.setItem('healthcheck_finished_once', '1');
+            await refreshStatus();
+            clearInterval(pollTimer);
+            pollTimer = null;
+          }
+        } catch (error) {
+          setFlash(error.message, 'error');
+          clearInterval(pollTimer);
+          pollTimer = null;
+        }
+      }, 2000);
+    }
+
+    async function bulkTogglePool(enable) {
+      const nodeIds = [...selectedNodeIds];
+      if (nodeIds.length === 0) return;
+      setFlash(enable ? 'Adding selected nodes to pool...' : 'Removing selected nodes from pool...', 'working');
+      try {
+        await call('/api/nodes', {
+          method: 'PATCH',
+          body: JSON.stringify({ node_ids: nodeIds, pool_enabled: enable })
+        });
+        setFlash(enable ? 'Selected nodes added to pool.' : 'Selected nodes removed from pool.', 'success');
+        selectedNodeIds.clear();
+        await refreshDashboard();
+      } catch (error) {
+        setFlash(error.message, 'error');
+      }
+    }
+
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       const payload = Object.fromEntries(new FormData(form).entries());
-      flash.textContent = 'Importing...';
+      setFlash('Importing subscription...', 'working');
       try {
         await call('/api/subscriptions', { method: 'POST', body: JSON.stringify(payload) });
         location.reload();
       } catch (error) {
-        flash.textContent = error.message;
+        setFlash(error.message, 'error');
       }
     });
 
     checkBtn.addEventListener('click', async () => {
-      flash.textContent = 'Checking...';
+      setFlash('Starting health check...', 'working');
       try {
         await call('/api/check', { method: 'POST' });
-        location.reload();
+        sessionStorage.setItem('healthcheck_active', '1');
+        startHealthcheckPolling();
       } catch (error) {
-        flash.textContent = error.message;
+        setFlash(error.message, 'error');
       }
     });
 
     rebuildBtn.addEventListener('click', async () => {
-      flash.textContent = 'Rebuilding...';
+      setFlash('Syncing ports...', 'working');
       try {
         await call('/api/rebuild', { method: 'POST' });
         location.reload();
       } catch (error) {
-        flash.textContent = error.message;
+        setFlash(error.message, 'error');
       }
     });
 
-    document.querySelectorAll('.action-refresh').forEach((button) => {
-      button.addEventListener('click', async () => {
-        flash.textContent = 'Refreshing...';
-        try {
-          await call(`/api/subscriptions/${button.dataset.id}/refresh`, { method: 'POST' });
-          location.reload();
-        } catch (error) {
-          flash.textContent = error.message;
-        }
-      });
+    [searchInput, filterPool, filterFailed, filterRunning].forEach((element) => {
+      element.addEventListener('input', applyFilters);
+      element.addEventListener('change', applyFilters);
     });
 
-    document.querySelectorAll('.action-delete').forEach((button) => {
-      button.addEventListener('click', async () => {
-        flash.textContent = 'Deleting...';
-        try {
-          await call(`/api/subscriptions/${button.dataset.id}`, { method: 'DELETE' });
-          location.reload();
-        } catch (error) {
-          flash.textContent = error.message;
-        }
+    selectVisibleBtn.addEventListener('click', () => {
+      visibleRows().forEach((row) => {
+        selectedNodeIds.add(row.dataset.nodeId);
+        row.querySelector('.node-checkbox').checked = true;
       });
+      updateSelectionUI();
     });
+
+    clearSelectionBtn.addEventListener('click', () => {
+      selectedNodeIds.clear();
+      nodesBody.querySelectorAll('.node-checkbox').forEach((checkbox) => {
+        checkbox.checked = false;
+      });
+      updateSelectionUI();
+    });
+
+    selectAllVisible.addEventListener('change', () => {
+      visibleRows().forEach((row) => {
+        const checkbox = row.querySelector('.node-checkbox');
+        checkbox.checked = selectAllVisible.checked;
+        if (selectAllVisible.checked) selectedNodeIds.add(row.dataset.nodeId);
+        else selectedNodeIds.delete(row.dataset.nodeId);
+      });
+      updateSelectionUI();
+    });
+
+    bulkAddBtn.addEventListener('click', () => bulkTogglePool(true));
+    bulkRemoveBtn.addEventListener('click', () => bulkTogglePool(false));
+
+    document.addEventListener('mouseover', (event) => {
+      const target = event.target.closest('.error-pill[data-tooltip]');
+      if (!target) return;
+      showTooltip(target, event);
+    });
+
+    document.addEventListener('mousemove', (event) => {
+      if (!tooltip.classList.contains('is-visible')) return;
+      moveTooltip(event);
+    });
+
+    document.addEventListener('mouseout', (event) => {
+      if (!event.target.closest('.error-pill[data-tooltip]')) return;
+      hideTooltip();
+    });
+
+    document.addEventListener('click', async (event) => {
+      const target = event.target.closest('.error-pill[data-tooltip]');
+      if (!target) return;
+      try {
+        await copyText(target.dataset.tooltip);
+        setFlash('Error copied to clipboard.', 'success');
+      } catch (error) {
+        setFlash(error.message || 'Failed to copy error.', 'error');
+      }
+    });
+
+    attachRowCheckboxes();
+    attachRowActions();
+    applyFilters();
+
+    if (sessionStorage.getItem('healthcheck_active') === '1' || {{ 'true' if status.healthcheck_running else 'false' }}) {
+      startHealthcheckPolling();
+    } else {
+      refreshStatus().catch((error) => setFlash(error.message, 'error'));
+    }
   </script>
 </body>
 </html>

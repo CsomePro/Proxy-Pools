@@ -18,9 +18,12 @@ class Settings(BaseSettings):
     base_port: int = 20001
     pool_size: int = 20
     strategy: str = "random"
+    lease_ttl_secs: int = 600
+    cleanup_interval_secs: int = 30
     healthcheck_url: str = "https://www.gstatic.com/generate_204"
     healthcheck_timeout: int = 10
     healthcheck_interval_secs: int = 300
+    healthcheck_concurrency: int = 8
     allocation_stale_after_secs: int = 300
     log_level: str = "info"
 

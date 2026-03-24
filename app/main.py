@@ -7,7 +7,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from .config import settings
-from .models import SubscriptionCreate
+from .models import NodeBulkUpdateRequest, NodeUpdateRequest, SubscriptionCreate
 from .service import service
 
 logging.basicConfig(level=getattr(logging, settings.log_level.upper(), logging.INFO))
@@ -80,16 +80,34 @@ async def api_nodes() -> list[dict]:
     return [item.model_dump() for item in service.list_nodes()]
 
 
+@app.patch("/api/nodes/{node_id}")
+async def api_update_node(node_id: str, payload: NodeUpdateRequest) -> dict:
+    try:
+        node = service.update_node(node_id, pool_enabled=payload.pool_enabled, enabled=payload.enabled)
+        return {"success": True, "node": node.model_dump()}
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.patch("/api/nodes")
+async def api_update_nodes(payload: NodeBulkUpdateRequest) -> dict:
+    try:
+        nodes = service.update_nodes(payload.node_ids, pool_enabled=payload.pool_enabled, enabled=payload.enabled)
+        return {"success": True, "updated": len(nodes), "nodes": [node.model_dump() for node in nodes]}
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
 @app.post("/api/check")
 async def api_check() -> dict:
-    state = await service.check_bound_nodes()
-    return {"success": True, "bound_nodes": len([n for n in state.nodes if n.bound_port])}
+    started = service.start_healthcheck()
+    return {"success": True, "started": started, "running": service.status()["healthcheck_running"]}
 
 
 @app.post("/api/rebuild")
 async def api_rebuild() -> dict:
-    state = service.rebuild_pool()
-    return {"success": True, "bound_nodes": len([n for n in state.nodes if n.bound_port])}
+    state = service.list_nodes()
+    return {"success": True, "assigned_nodes": len([n for n in state if n.bound_port])}
 
 
 @app.get("/api/proxy/next")

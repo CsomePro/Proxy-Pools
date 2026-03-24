@@ -81,15 +81,33 @@ def _tls_from_mapping(values: dict[str, Any], default_server_name: str | None = 
         return None
 
     tls: dict[str, Any] = {"enabled": True}
-    server_name = values.get("sni") or values.get("servername") or values.get("server_name") or values.get("host") or default_server_name
+    server_name = (
+        values.get("sni")
+        or values.get("peer")
+        or values.get("servername")
+        or values.get("server_name")
+        or values.get("host")
+        or default_server_name
+    )
     if server_name:
         tls["server_name"] = server_name
     if values.get("alpn"):
         tls["alpn"] = _split_csv(values["alpn"])
     if values.get("fp"):
         tls["utls"] = {"enabled": True, "fingerprint": values["fp"]}
-    if values.get("allowInsecure") is not None or values.get("skip-cert-verify") is not None:
-        tls["insecure"] = _parse_bool(values.get("allowInsecure", values.get("skip-cert-verify")))
+    if (
+        values.get("allowInsecure") is not None
+        or values.get("skip-cert-verify") is not None
+        or values.get("verify_cert") is not None
+        or values.get("verify-cert") is not None
+        or values.get("insecure") is not None
+    ):
+        if values.get("verify_cert") is not None or values.get("verify-cert") is not None:
+            tls["insecure"] = not _parse_bool(values.get("verify_cert", values.get("verify-cert")), True)
+        else:
+            tls["insecure"] = _parse_bool(
+                values.get("allowInsecure", values.get("skip-cert-verify", values.get("insecure")))
+            )
     if security == "reality" or has_reality:
         tls["reality"] = {
             "enabled": True,
@@ -157,7 +175,10 @@ def _parse_vless_or_trojan_uri(uri: str, scheme: str, subscription_id: str | Non
             outbound["flow"] = query["flow"]
     else:
         outbound["password"] = urllib.parse.unquote(parsed.username or "")
-    tls = _tls_from_mapping(query, default_server_name=parsed.hostname)
+    tls_values = dict(query)
+    if scheme == "trojan" and tls_values.get("tls") is None:
+        tls_values["tls"] = "tls"
+    tls = _tls_from_mapping(tls_values, default_server_name=parsed.hostname)
     if tls:
         outbound["tls"] = tls
     transport = _transport_from_mapping(query.get("type"), query)
@@ -291,7 +312,10 @@ def parse_clash_yaml(content: str, subscription_id: str | None = None) -> list[N
                 "server_port": int(item["port"]),
                 "password": item["password"],
             }
-            tls = _tls_from_mapping(item, default_server_name=item.get("sni") or item.get("server"))
+            tls_values = dict(item)
+            if tls_values.get("tls") is None:
+                tls_values["tls"] = True
+            tls = _tls_from_mapping(tls_values, default_server_name=item.get("sni") or item.get("server"))
             if tls:
                 outbound["tls"] = tls
             transport = _transport_from_mapping(item.get("network"), item)
