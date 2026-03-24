@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Proxy Pool</title>
+  <style>
+    :root {
+      --bg: #f5f1e8;
+      --panel: #fffdf8;
+      --ink: #1f1a17;
+      --muted: #6a6058;
+      --line: #d6ccbc;
+      --accent: #0d7c66;
+      --danger: #b64545;
+    }
+    body { margin: 0; font-family: "IBM Plex Sans", "Segoe UI", sans-serif; background: linear-gradient(180deg, #efe5d4, var(--bg)); color: var(--ink); }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 24px; }
+    .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+    .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.05); }
+    h1, h2 { margin: 0 0 12px; }
+    .muted { color: var(--muted); }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); }
+    input, select, button { font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); }
+    button { background: var(--accent); color: white; cursor: pointer; }
+    button.secondary { background: white; color: var(--ink); }
+    form { display: grid; gap: 10px; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .pill { display: inline-block; padding: 4px 8px; border-radius: 999px; background: #e7f5f1; color: var(--accent); }
+    .bad { color: var(--danger); }
+    code { background: #f1ece4; padding: 2px 6px; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Proxy Pool</h1>
+    <p class="muted">Import subscriptions, keep a warm SOCKS5 pool, and return a healthy proxy to codex-console.</p>
+
+    <div class="grid">
+      <section class="panel">
+        <h2>Status</h2>
+        <p><span class="pill">Subscriptions {{ status.subscriptions }}</span> <span class="pill">Nodes {{ status.nodes }}</span> <span class="pill">Bound {{ status.bound_nodes }}</span></p>
+        <p>Healthy bound nodes: <strong>{{ status.healthy_bound_nodes }}</strong></p>
+        <p>Base port: <code>{{ status.base_port }}</code></p>
+        <p>Pool size: <code>{{ status.pool_size }}</code></p>
+        <p>Engine running: <strong>{{ "yes" if status.engine.running else "no" }}</strong></p>
+        <p>Next proxy API: <code>/api/proxy/next</code></p>
+      </section>
+
+      <section class="panel">
+        <h2>Add Subscription</h2>
+        <form id="subscription-form">
+          <input type="text" name="name" placeholder="subscription name" required>
+          <input type="url" name="url" placeholder="https://example.com/subscription" required>
+          <select name="format">
+            <option value="auto">auto</option>
+            <option value="base64">base64</option>
+            <option value="uri">uri</option>
+            <option value="clash">clash</option>
+          </select>
+          <div class="row">
+            <button type="submit">Import</button>
+            <button type="button" class="secondary" id="check-btn">Check Bound Nodes</button>
+            <button type="button" class="secondary" id="rebuild-btn">Rebuild Pool</button>
+          </div>
+        </form>
+        <p id="flash" class="muted"></p>
+      </section>
+    </div>
+
+    <section class="panel" style="margin-top:16px;">
+      <h2>Subscriptions</h2>
+      <table>
+        <thead>
+          <tr><th>Name</th><th>Format</th><th>Last Refresh</th><th>Last Error</th><th>Action</th></tr>
+        </thead>
+        <tbody>
+          {% for item in subscriptions %}
+          <tr>
+            <td>{{ item.name }}</td>
+            <td>{{ item.format }}</td>
+            <td>{{ item.last_refreshed_at or "-" }}</td>
+            <td class="{{ 'bad' if item.last_error else '' }}">{{ item.last_error or "-" }}</td>
+            <td>
+              <button type="button" class="secondary action-refresh" data-id="{{ item.id }}">Refresh</button>
+              <button type="button" class="secondary action-delete" data-id="{{ item.id }}">Delete</button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+
+    <section class="panel" style="margin-top:16px;">
+      <h2>Bound Nodes</h2>
+      <table>
+        <thead>
+          <tr><th>Name</th><th>Protocol</th><th>Port</th><th>Healthy</th><th>Latency</th><th>Checked At</th></tr>
+        </thead>
+        <tbody>
+          {% for node in nodes if node.bound_port %}
+          <tr>
+            <td>{{ node.name }}</td>
+            <td>{{ node.protocol }}</td>
+            <td><code>{{ node.bound_port }}</code></td>
+            <td>{{ node.healthy if node.healthy is not none else "-" }}</td>
+            <td>{{ node.last_latency_ms or "-" }}</td>
+            <td>{{ node.last_checked_at or "-" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+  </div>
+
+  <script>
+    const flash = document.getElementById('flash');
+    const form = document.getElementById('subscription-form');
+    const checkBtn = document.getElementById('check-btn');
+    const rebuildBtn = document.getElementById('rebuild-btn');
+
+    async function call(url, options = {}) {
+      const res = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...options });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.detail || 'request failed');
+      return data;
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const payload = Object.fromEntries(new FormData(form).entries());
+      flash.textContent = 'Importing...';
+      try {
+        await call('/api/subscriptions', { method: 'POST', body: JSON.stringify(payload) });
+        location.reload();
+      } catch (error) {
+        flash.textContent = error.message;
+      }
+    });
+
+    checkBtn.addEventListener('click', async () => {
+      flash.textContent = 'Checking...';
+      try {
+        await call('/api/check', { method: 'POST' });
+        location.reload();
+      } catch (error) {
+        flash.textContent = error.message;
+      }
+    });
+
+    rebuildBtn.addEventListener('click', async () => {
+      flash.textContent = 'Rebuilding...';
+      try {
+        await call('/api/rebuild', { method: 'POST' });
+        location.reload();
+      } catch (error) {
+        flash.textContent = error.message;
+      }
+    });
+
+    document.querySelectorAll('.action-refresh').forEach((button) => {
+      button.addEventListener('click', async () => {
+        flash.textContent = 'Refreshing...';
+        try {
+          await call(`/api/subscriptions/${button.dataset.id}/refresh`, { method: 'POST' });
+          location.reload();
+        } catch (error) {
+          flash.textContent = error.message;
+        }
+      });
+    });
+
+    document.querySelectorAll('.action-delete').forEach((button) => {
+      button.addEventListener('click', async () => {
+        flash.textContent = 'Deleting...';
+        try {
+          await call(`/api/subscriptions/${button.dataset.id}`, { method: 'DELETE' });
+          location.reload();
+        } catch (error) {
+          flash.textContent = error.message;
+        }
+      });
+    });
+  </script>
+</body>
+</html>
