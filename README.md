@@ -74,7 +74,7 @@ The API returns:
 This service is intended to be published from its own repository to:
 
 ```text
-ghcr.io/csomepro/proxy-pools
+ghcr.io/csomepro/proxy-pool
 ```
 
 Included GitHub Actions:
