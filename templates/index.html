@@ -532,6 +532,31 @@
       margin-top: 12px;
     }
 
+    .cooling-card {
+      background: rgba(255, 248, 236, 0.88);
+      border-color: rgba(198, 126, 28, 0.18);
+    }
+
+    .state-stack,
+    .activity-stack,
+    .registration-stack {
+      display: grid;
+      gap: 8px;
+    }
+
+    .time-text {
+      color: var(--muted);
+      cursor: help;
+      border-bottom: 1px dotted rgba(95, 111, 100, 0.34);
+    }
+
+    .compact-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
     .empty {
       padding: 18px;
       border-radius: 16px;
@@ -689,6 +714,10 @@
             <div class="metric-label">Healthy Running</div>
             <div class="metric-value" id="metric-healthy-running">{{ status.healthy_running_nodes }}</div>
           </article>
+          <article class="metric">
+            <div class="metric-label">Cooling Pool</div>
+            <div class="metric-value" id="metric-cooling">{{ status.cooling_nodes }}</div>
+          </article>
         </div>
       </div>
 
@@ -718,6 +747,7 @@
           <div class="meta-item"><span>Status</span><strong id="healthcheck-status">{{ "running" if status.healthcheck_running else "idle" }}</strong></div>
           <div class="meta-item"><span>Lease TTL</span><strong id="lease-ttl">{{ status.lease_ttl_secs }}s</strong></div>
           <div class="meta-item"><span>Base Port</span><strong id="base-port">{{ status.base_port }}</strong></div>
+          <div class="meta-item"><span>Cooldown Policy</span><strong id="cooldown-policy">{{ status.registration_fail_threshold }} fails / {{ status.registration_cooldown_secs }}s</strong></div>
           <div class="meta-item"><span>Local Runners</span><strong id="engine-running">{{ status.engine.running_nodes }}</strong></div>
           <div class="meta-item"><span>Next Proxy API</span><strong class="mono">/api/proxy/next</strong></div>
         </div>
@@ -793,7 +823,9 @@
             <tr>
               <td>{{ item.name }}</td>
               <td><span class="badge badge-neutral">{{ item.format }}</span></td>
-              <td>{{ item.last_refreshed_at or "-" }}</td>
+              <td>
+                <span class="time-text mono" data-full-ts="{{ item.last_refreshed_at or '' }}" title="{{ item.last_refreshed_at or '' }}">{{ item.last_refreshed_at or "-" }}</span>
+              </td>
               <td class="{{ 'error-copy' if item.last_error else '' }}">{{ item.last_error or "-" }}</td>
               <td>
                 <div class="row">
@@ -826,12 +858,45 @@
               <span class="badge badge-good">Port {{ node.bound_port }}</span>
               <span class="badge {{ 'badge-good' if node.healthy else 'badge-neutral' }}">{{ node.healthy if node.healthy is not none else 'unknown' }}</span>
             </div>
-            <div class="node-meta">Lease expires: {{ node.lease_expires_at or "-" }}</div>
+            <div class="node-meta">Lease expires:
+              <span class="time-text mono" data-full-ts="{{ node.lease_expires_at or '' }}" title="{{ node.lease_expires_at or '' }}">{{ node.lease_expires_at or "-" }}</span>
+            </div>
             <div class="node-meta">Latency: {{ node.last_latency_ms or "-" }} ms</div>
           </article>
           {% endfor %}
         {% else %}
           <div class="empty">No node is running right now.</div>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="panel" style="margin-bottom: 18px;">
+      <div class="panel-head">
+        <div>
+          <h2>Cooling Pool</h2>
+          <div class="panel-copy">Nodes held out of selection after repeated registration failures. They return automatically after cooldown.</div>
+        </div>
+      </div>
+      <div class="running-grid" id="cooling-grid">
+        {% set cooling_nodes = nodes | selectattr('registration_cooldown_until') | list %}
+        {% if cooling_nodes %}
+          {% for node in cooling_nodes %}
+          <article class="running-card cooling-card">
+            <h3>{{ node.name }}</h3>
+            <div class="row">
+              <span class="badge badge-neutral">{{ node.protocol }}</span>
+              <span class="badge badge-warn">Cooling</span>
+              <span class="badge badge-bad">Streak {{ node.registration_consecutive_failures }}</span>
+            </div>
+            <div class="node-meta">Port: {{ node.bound_port or "-" }}</div>
+            <div class="node-meta">Success / Fail: {{ node.registration_success_count }} / {{ node.registration_failed_count }}</div>
+            <div class="node-meta">Return after:
+              <span class="time-text mono" data-full-ts="{{ node.registration_cooldown_until or '' }}" title="{{ node.registration_cooldown_until or '' }}">{{ node.registration_cooldown_until or "-" }}</span>
+            </div>
+          </article>
+          {% endfor %}
+        {% else %}
+          <div class="empty">Cooling pool is empty right now.</div>
         {% endif %}
       </div>
     </section>
@@ -844,6 +909,7 @@
             <label class="toggle"><input type="checkbox" id="filter-pool"> In pool only</label>
             <label class="toggle"><input type="checkbox" id="filter-failed"> Failed only</label>
             <label class="toggle"><input type="checkbox" id="filter-running"> Running only</label>
+            <label class="toggle"><input type="checkbox" id="filter-cooling"> Cooling only</label>
           </div>
           <div class="toolbar-stats" id="toolbar-stats">0 selected / {{ nodes|length }} visible</div>
         </div>
@@ -877,13 +943,11 @@
                 <th>Node</th>
                 <th>Protocol</th>
                 <th>Pool</th>
-                <th>Runtime</th>
-                <th>Check</th>
+                <th>State</th>
                 <th>Port</th>
-                <th>Healthy</th>
-                <th>Latency</th>
-                <th>Checked</th>
-                <th>Lease</th>
+                <th>Registration</th>
+                <th>Cooling</th>
+                <th>Activity</th>
                 <th>Error</th>
                 <th>Action</th>
               </tr>
@@ -898,6 +962,7 @@
                 data-runtime-state="{{ node.runtime_state }}"
                 data-health="{{ node.healthy if node.healthy is not none else 'unknown' }}"
                 data-check-state="{{ node.healthcheck_state }}"
+                data-cooling="{{ '1' if node.registration_cooldown_until else '0' }}"
               >
                 <td class="checkbox-cell">
                   <input type="checkbox" class="node-checkbox" data-id="{{ node.id }}">
@@ -910,19 +975,48 @@
                 <td class="cell-pool">
                   <span class="badge {{ 'badge-good' if node.pool_enabled else 'badge-neutral' }}">{{ 'in pool' if node.pool_enabled else 'out' }}</span>
                 </td>
-                <td class="cell-runtime">
-                  <span class="badge {{ 'badge-good' if node.runtime_state == 'running' else 'badge-neutral' }}">{{ node.runtime_state }}</span>
-                </td>
-                <td class="cell-check">
-                  <span class="badge {{ 'badge-warn' if node.healthcheck_state in ['waiting', 'running'] else ('badge-good' if node.healthcheck_state == 'passed' else ('badge-bad' if node.healthcheck_state == 'failed' else 'badge-neutral')) }}">{{ node.healthcheck_state }}</span>
+                <td class="cell-state">
+                  <div class="state-stack">
+                    <div class="compact-row">
+                      <span class="badge {{ 'badge-good' if node.runtime_state == 'running' else 'badge-neutral' }}">{{ node.runtime_state }}</span>
+                      <span class="badge {{ 'badge-warn' if node.healthcheck_state in ['waiting', 'running'] else ('badge-good' if node.healthcheck_state == 'passed' else ('badge-bad' if node.healthcheck_state == 'failed' else 'badge-neutral')) }}">{{ node.healthcheck_state }}</span>
+                    </div>
+                    <div class="compact-row">
+                      <span class="badge {{ 'badge-good' if node.healthy else ('badge-bad' if node.healthy is not none else 'badge-neutral') }}">{{ node.healthy if node.healthy is not none else 'unknown' }}</span>
+                      <span class="node-meta mono">{{ node.last_latency_ms or "-" }} ms</span>
+                    </div>
+                  </div>
                 </td>
                 <td class="cell-port mono">{{ node.bound_port or "-" }}</td>
-                <td class="cell-healthy">
-                  <span class="badge {{ 'badge-good' if node.healthy else ('badge-bad' if node.healthy is not none else 'badge-neutral') }}">{{ node.healthy if node.healthy is not none else 'unknown' }}</span>
+                <td class="cell-registration">
+                  <div class="registration-stack">
+                    <div class="compact-row">
+                      <span class="badge badge-good">OK {{ node.registration_success_count }}</span>
+                      <span class="badge badge-bad">Fail {{ node.registration_failed_count }}</span>
+                    </div>
+                    <div class="node-meta">Streak {{ node.registration_consecutive_failures }}</div>
+                  </div>
                 </td>
-                <td class="cell-latency mono">{{ node.last_latency_ms or "-" }}</td>
-                <td class="cell-checked mono">{{ node.last_checked_at or "-" }}</td>
-                <td class="cell-lease mono">{{ node.lease_expires_at or "-" }}</td>
+                <td class="cell-cooling">
+                  {% if node.registration_cooldown_until %}
+                  <span class="badge badge-warn">cooling</span>
+                  <div class="node-meta">
+                    <span class="time-text mono" data-full-ts="{{ node.registration_cooldown_until or '' }}" title="{{ node.registration_cooldown_until or '' }}">{{ node.registration_cooldown_until or "-" }}</span>
+                  </div>
+                  {% else %}
+                  <span class="node-meta">-</span>
+                  {% endif %}
+                </td>
+                <td class="cell-activity">
+                  <div class="activity-stack">
+                    <div class="node-meta">Checked
+                      <span class="time-text mono" data-full-ts="{{ node.last_checked_at or '' }}" title="{{ node.last_checked_at or '' }}">{{ node.last_checked_at or "-" }}</span>
+                    </div>
+                    <div class="node-meta">Lease
+                      <span class="time-text mono" data-full-ts="{{ node.lease_expires_at or '' }}" title="{{ node.lease_expires_at or '' }}">{{ node.lease_expires_at or "-" }}</span>
+                    </div>
+                  </div>
+                </td>
                 <td class="cell-error">
                   {% if node.last_error %}
                   <span class="error-pill" data-tooltip="{{ node.last_error }}">Error</span>
@@ -955,6 +1049,7 @@
     const filterPool = document.getElementById('filter-pool');
     const filterFailed = document.getElementById('filter-failed');
     const filterRunning = document.getElementById('filter-running');
+    const filterCooling = document.getElementById('filter-cooling');
     const selectVisibleBtn = document.getElementById('select-visible-btn');
     const clearSelectionBtn = document.getElementById('clear-selection-btn');
     const bulkAddBtn = document.getElementById('bulk-add-btn');
@@ -965,6 +1060,7 @@
     const badgeVisible = document.getElementById('badge-visible');
     const badgeRunning = document.getElementById('badge-running');
     const runningGrid = document.getElementById('running-grid');
+    const coolingGrid = document.getElementById('cooling-grid');
     const nodesBody = document.getElementById('nodes-body');
     const selectedNodeIds = new Set();
     const tooltip = document.createElement('div');
@@ -991,6 +1087,48 @@
       return `<span class="badge badge-${tone}">${escapeHtml(label)}</span>`;
     }
 
+    function formatTimestampShort(value) {
+      if (!value) return '-';
+      const parsed = new Date(value);
+      if (Number.isNaN(parsed.getTime())) {
+        return String(value).replace('T', ' ').slice(0, 16);
+      }
+      const month = String(parsed.getMonth() + 1).padStart(2, '0');
+      const day = String(parsed.getDate()).padStart(2, '0');
+      const hour = String(parsed.getHours()).padStart(2, '0');
+      const minute = String(parsed.getMinutes()).padStart(2, '0');
+      return `${month}-${day} ${hour}:${minute}`;
+    }
+
+    function renderTimestampText(value, empty = '-') {
+      if (!value) return `<span class="time-text mono">${escapeHtml(empty)}</span>`;
+      return `<span class="time-text mono" title="${escapeHtml(value)}">${escapeHtml(formatTimestampShort(value))}</span>`;
+    }
+
+    function formatDurationShort(totalSeconds) {
+      const seconds = Number(totalSeconds) || 0;
+      if (seconds >= 3600 && seconds % 3600 === 0) return `${seconds / 3600}h`;
+      if (seconds >= 60 && seconds % 60 === 0) return `${seconds / 60}m`;
+      if (seconds >= 3600) return `${Math.round(seconds / 3600)}h`;
+      if (seconds >= 60) return `${Math.round(seconds / 60)}m`;
+      return `${seconds}s`;
+    }
+
+    function isCoolingNode(nodeOrValue) {
+      const value = typeof nodeOrValue === 'string' ? nodeOrValue : nodeOrValue?.registration_cooldown_until;
+      if (!value) return false;
+      const parsed = new Date(value);
+      if (Number.isNaN(parsed.getTime())) return true;
+      return parsed.getTime() > Date.now();
+    }
+
+    function hydrateTimestampElements(root = document) {
+      root.querySelectorAll('[data-full-ts]').forEach((element) => {
+        const full = element.dataset.fullTs || '';
+        element.textContent = full ? formatTimestampShort(full) : '-';
+      });
+    }
+
     function toneForHealth(value) {
       if (value === true) return 'good';
       if (value === false) return 'bad';
@@ -1015,6 +1153,7 @@
       if (filterPool.checked && row.dataset.poolEnabled !== '1') return false;
       if (filterFailed.checked && row.dataset.health !== 'false' && row.dataset.checkState !== 'failed') return false;
       if (filterRunning.checked && row.dataset.runtimeState !== 'running') return false;
+      if (filterCooling.checked && row.dataset.cooling !== '1') return false;
       return true;
     }
 
@@ -1116,8 +1255,29 @@
             ${badge(`Port ${node.bound_port ?? '-'}`, 'good')}
             ${badge(String(node.healthy ?? 'unknown'), toneForHealth(node.healthy))}
           </div>
-          <div class="node-meta">Lease expires: ${escapeHtml(node.lease_expires_at || '-')}</div>
+          <div class="node-meta">Lease expires: ${renderTimestampText(node.lease_expires_at)}</div>
           <div class="node-meta">Latency: ${escapeHtml(node.last_latency_ms ?? '-')} ms</div>
+        </article>
+      `).join('');
+    }
+
+    function renderCoolingNodes(nodes) {
+      const cooling = nodes.filter((node) => isCoolingNode(node));
+      if (cooling.length === 0) {
+        coolingGrid.innerHTML = '<div class="empty">Cooling pool is empty right now.</div>';
+        return;
+      }
+      coolingGrid.innerHTML = cooling.map((node) => `
+        <article class="running-card cooling-card">
+          <h3>${escapeHtml(node.name)}</h3>
+          <div class="row">
+            ${badge(node.protocol, 'neutral')}
+            ${badge('Cooling', 'warn')}
+            ${badge(`Streak ${node.registration_consecutive_failures ?? 0}`, 'bad')}
+          </div>
+          <div class="node-meta">Port: ${escapeHtml(node.bound_port ?? '-')}</div>
+          <div class="node-meta">Success / Fail: ${escapeHtml(node.registration_success_count ?? 0)} / ${escapeHtml(node.registration_failed_count ?? 0)}</div>
+          <div class="node-meta">Return after: ${renderTimestampText(node.registration_cooldown_until)}</div>
         </article>
       `).join('');
     }
@@ -1129,6 +1289,7 @@
       row.dataset.runtimeState = node.runtime_state;
       row.dataset.health = node.healthy === null ? 'unknown' : String(node.healthy);
       row.dataset.checkState = node.healthcheck_state;
+      row.dataset.cooling = isCoolingNode(node) ? '1' : '0';
 
       const checkbox = row.querySelector('.node-checkbox');
       checkbox.checked = selectedNodeIds.has(node.id);
@@ -1139,13 +1300,37 @@
       `;
       row.querySelector('.cell-protocol').innerHTML = badge(node.protocol, 'neutral');
       row.querySelector('.cell-pool').innerHTML = badge(node.pool_enabled ? 'in pool' : 'out', node.pool_enabled ? 'good' : 'neutral');
-      row.querySelector('.cell-runtime').innerHTML = badge(node.runtime_state, toneForRuntime(node.runtime_state));
-      row.querySelector('.cell-check').innerHTML = badge(node.healthcheck_state, toneForCheck(node.healthcheck_state));
+      row.querySelector('.cell-state').innerHTML = `
+        <div class="state-stack">
+          <div class="compact-row">
+            ${badge(node.runtime_state, toneForRuntime(node.runtime_state))}
+            ${badge(node.healthcheck_state, toneForCheck(node.healthcheck_state))}
+          </div>
+          <div class="compact-row">
+            ${badge(String(node.healthy ?? 'unknown'), toneForHealth(node.healthy))}
+            <span class="node-meta mono">${escapeHtml(node.last_latency_ms ?? '-')} ms</span>
+          </div>
+        </div>
+      `;
       row.querySelector('.cell-port').textContent = node.bound_port ?? '-';
-      row.querySelector('.cell-healthy').innerHTML = badge(String(node.healthy ?? 'unknown'), toneForHealth(node.healthy));
-      row.querySelector('.cell-latency').textContent = node.last_latency_ms ?? '-';
-      row.querySelector('.cell-checked').textContent = node.last_checked_at || '-';
-      row.querySelector('.cell-lease').textContent = node.lease_expires_at || '-';
+      row.querySelector('.cell-registration').innerHTML = `
+        <div class="registration-stack">
+          <div class="compact-row">
+            ${badge(`OK ${node.registration_success_count ?? 0}`, 'good')}
+            ${badge(`Fail ${node.registration_failed_count ?? 0}`, 'bad')}
+          </div>
+          <div class="node-meta">Streak ${escapeHtml(node.registration_consecutive_failures ?? 0)}</div>
+        </div>
+      `;
+      row.querySelector('.cell-cooling').innerHTML = isCoolingNode(node)
+        ? `${badge('cooling', 'warn')}<div class="node-meta">${renderTimestampText(node.registration_cooldown_until)}</div>`
+        : '<span class="node-meta">-</span>';
+      row.querySelector('.cell-activity').innerHTML = `
+        <div class="activity-stack">
+          <div class="node-meta">Checked ${renderTimestampText(node.last_checked_at)}</div>
+          <div class="node-meta">Lease ${renderTimestampText(node.lease_expires_at)}</div>
+        </div>
+      `;
       const errorCell = row.querySelector('.cell-error');
       errorCell.innerHTML = node.last_error
         ? `<span class="error-pill" data-tooltip="${escapeHtml(node.last_error)}">Error</span>`
@@ -1202,6 +1387,7 @@
         if (row) updateRow(row, node);
       });
       renderRunningNodes(nodes);
+      renderCoolingNodes(nodes);
       applyFilters();
     }
 
@@ -1213,8 +1399,10 @@
       document.getElementById('metric-assigned').textContent = status.assigned_nodes;
       document.getElementById('metric-running').textContent = status.running_nodes;
       document.getElementById('metric-healthy-running').textContent = status.healthy_running_nodes;
+      document.getElementById('metric-cooling').textContent = status.cooling_nodes;
       document.getElementById('base-port').textContent = status.base_port;
       document.getElementById('lease-ttl').textContent = `${status.lease_ttl_secs}s`;
+      document.getElementById('cooldown-policy').textContent = `${status.registration_fail_threshold} fails / ${formatDurationShort(status.registration_cooldown_secs)}`;
       document.getElementById('engine-running').textContent = status.engine.running_nodes;
       document.getElementById('healthcheck-status').textContent = status.healthcheck_running ? 'running' : 'idle';
       document.getElementById('healthcheck-summary').innerHTML = `
@@ -1317,7 +1505,7 @@
       }
     });
 
-    [searchInput, filterPool, filterFailed, filterRunning].forEach((element) => {
+    [searchInput, filterPool, filterFailed, filterRunning, filterCooling].forEach((element) => {
       element.addEventListener('input', applyFilters);
       element.addEventListener('change', applyFilters);
     });
@@ -1380,6 +1568,7 @@
 
     attachRowCheckboxes();
     attachRowActions();
+    hydrateTimestampElements();
     applyFilters();
 
     if (sessionStorage.getItem('healthcheck_active') === '1' || {{ 'true' if status.healthcheck_running else 'false' }}) {
